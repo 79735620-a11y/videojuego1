@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math Wizards 1v1 - Duelo Mágico de Números</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Luckiest+Guy&family=Nunito:wght@700;900&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #0f172a 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .font-title {
+            font-family: 'Luckiest Guy', cursive;
+            letter-spacing: 1px;
+        }
+
+        .font-num {
+            font-family: 'Nunito', sans-serif;
+        }
+
+        /* Glow & Neon FX */
+        .glow-p1 {
+            filter: drop-shadow(0 0 12px rgba(244, 63, 94, 0.8));
+        }
+
+        .glow-p2 {
+            filter: drop-shadow(0 0 12px rgba(14, 165, 233, 0.8));
+        }
+
+        .btn-bounce {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+        }
+
+        .btn-bounce:active {
+            transform: scale(0.92);
+        }
+
+        /* Particle Canvas */
+        #fxCanvas {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        /* Shake animation */
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-8px, 5px); }
+            40% { transform: translate(8px, -5px); }
+            60% { transform: translate(-5px, -3px); }
+            80% { transform: translate(5px, 3px); }
+        }
+
+        .animate-shake {
+            animation: shake 0.35s ease-in-out;
+        }
+
+        /* Floating animation */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(2deg); }
+        }
+
+        .animate-float {
+            animation: floatSlow 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center relative overflow-hidden select-none">
+
+    <!-- Background Particle Canvas -->
+    <canvas id="fxCanvas"></canvas>
+
+    <!-- TOP HEADER / DASHBOARD -->
+    <header class="w-full max-w-5xl px-4 py-2 z-20 flex justify-between items-center bg-indigo-950/70 backdrop-blur-md border-b-2 border-indigo-500/30 rounded-b-2xl shadow-lg">
+        <!-- Player 1 Quick Stats (Left) -->
+        <div class="flex items-center gap-3">
+            <div id="p1AvatarDisplay" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-2xl shadow-md border-2 border-rose-300 animate-float">
+                🧙‍♂️
+            </div>
+            <div>
+                <div class="text-xs text-rose-300 font-bold uppercase tracking-wider">Jugador 1</div>
+                <div class="flex items-center gap-2">
+                    <span id="p1Score" class="font-title text-2xl text-rose-400">0</span>
+                    <span class="text-xs text-rose-200/80 font-bold">PTS</span>
+                    <div id="p1Combo" class="hidden text-xs bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full animate-bounce">
+                        🔥 x2
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Title & Mode Center -->
+        <div class="text-center hidden sm:block">
+            <h1 class="font-title text-2xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-amber-300 to-cyan-400">
+                MATH WIZARDS 1v1
+            </h1>
+            <div id="gameModeBadge" class="text-xs font-bold text-indigo-200 bg-indigo-900/60 px-3 py-0.5 rounded-full border border-indigo-500/30 inline-block">
+                Sumas y Restas • Normal
+            </div>
+        </div>
+
+        <!-- Center Controls / Sound -->
+        <div class="flex items-center gap-2">
+            <button id="soundToggleBtn" class="w-9 h-9 rounded-xl bg-indigo-900/80 hover:bg-indigo-800 text-amber-300 border border-indigo-500/40 flex items-center justify-center btn-bounce">
+                <i class="fas fa-volume-high" id="soundIcon"></i>
+            </button>
+            <button id="pauseBtn" class="px-3 py-1.5 rounded-xl bg-indigo-900/80 hover:bg-indigo-800 text-indigo-200 font-bold border border-indigo-500/40 text-xs flex items-center gap-1 btn-bounce">
+                <i class="fas fa-pause"></i> Pausa
+            </button>
+        </div>
+
+        <!-- Player 2 Quick Stats (Right) -->
+        <div class="flex items-center gap-3 text-right">
+            <div>
+                <div class="text-xs text-cyan-300 font-bold uppercase tracking-wider">Jugador 2</div>
+                <div class="flex items-center justify-end gap-2">
+                    <div id="p2Combo" class="hidden text-xs bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-full animate-bounce">
+                        🔥 x2
+                    </div>
+                    <span class="text-xs text-cyan-200/80 font-bold">PTS</span>
+                    <span id="p2Score" class="font-title text-2xl text-cyan-400">0</span>
+                </div>
+            </div>
+            <div id="p2AvatarDisplay" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-sky-400 flex items-center justify-center text-2xl shadow-md border-2 border-cyan-300 animate-float">
+                🤖
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN GAME DISPLAY (SPLIT ARENA) -->
+    <main id="mainGameArea" class="relative flex-1 w-full max-w-6xl p-2 sm:p-4 flex flex-col sm:flex-row gap-3 items-stretch justify-center z-10 overflow-hidden">
+        
+        <!-- PLAYER 1 ARENA SIDE (PINK / ROSE) -->
+        <section id="p1Side" class="flex-1 bg-indigo-950/40 backdrop-blur-md rounded-3xl border-2 border-rose-500/40 p-4 flex flex-col justify-between relative overflow-hidden shadow-2xl transition-all">
+            <!-- Background Glow -->
+            <div class="absolute -top-10 -left-10 w-40 h-40 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Header P1 -->
+            <div class="flex justify-between items-center z-10">
+                <span class="bg-rose-500/20 text-rose-300 text-xs font-bold px-3 py-1 rounded-full border border-rose-500/30">
+                    <i class="fas fa-keyboard mr-1"></i> Teclas: [A, S, D, F]
+                </span>
+                <div id="p1PowerupBadge" class="text-xs font-bold text-amber-300 bg-amber-950/60 border border-amber-500/40 px-2.5 py-1 rounded-lg hidden animate-pulse">
+                    ⚡ Super Hechizo Disponible!
+                </div>
+            </div>
+
+            <!-- Health / Energy Bar P1 -->
+            <div class="w-full bg-indigo-950 rounded-full h-3.5 p-0.5 border border-rose-500/30 my-2 z-10">
+                <div id="p1EnergyBar" class="bg-gradient-to-r from-rose-600 to-pink-400 h-full rounded-full transition-all duration-300 w-full"></div>
+            </div>
+
+            <!-- Wizard Visual & Spell FX Area -->
+            <div class="flex-1 flex flex-col items-center justify-center my-2 relative z-10">
+                <!-- Question Box P1 -->
+                <div class="bg-slate-900/90 border-2 border-rose-400/60 rounded-2xl p-4 w-full max-w-xs text-center shadow-lg relative">
+                    <span class="text-xs text-rose-300 uppercase tracking-widest font-bold block mb-1">Resuelve el reto</span>
+                    <div id="p1QuestionText" class="font-title text-3xl sm:text-4xl text-white tracking-wider">
+                        5 + 3 = ?
+                    </div>
+                </div>
+
+                <!-- Wizard Avatar Dynamic Animation -->
+                <div id="p1Sprite" class="text-6xl sm:text-7xl my-3 transition-transform duration-200">
+                    🧙‍♂️
+                </div>
+            </div>
+
+            <!-- Answer Buttons P1 (Grid 2x2) -->
+            <div id="p1OptionsGrid" class="grid grid-cols-2 gap-2 sm:gap-3 z-10">
+                <!-- Dynamic Answer Buttons injected via JS -->
+            </div>
+        </section>
+
+        <!-- CENTER BATTLE STATUS / VS BADGE -->
+        <div class="flex sm:flex-col justify-center items-center gap-2 z-20 shrink-0">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-amber-400 to-rose-500 flex items-center justify-center font-title text-xl sm:text-2xl text-slate-950 border-4 border-slate-900 shadow-xl animate-bounce">
+                VS
+            </div>
+            <!-- Target Score / Round Timer -->
+            <div class="bg-indigo-900/90 border border-indigo-400/30 px-3 py-1.5 rounded-xl text-center shadow-md">
+                <div class="text-[10px] text-indigo-300 font-bold uppercase tracking-wider">Meta</div>
+                <div id="targetScoreDisplay" class="font-title text-amber-400 text-lg">10 Pts</div>
+            </div>
+        </div>
+
+        <!-- PLAYER 2 ARENA SIDE (BLUE / CYAN) -->
+        <section id="p2Side" class="flex-1 bg-indigo-950/40 backdrop-blur-md rounded-3xl border-2 border-cyan-500/40 p-4 flex flex-col justify-between relative overflow-hidden shadow-2xl transition-all">
+            <!-- Background Glow -->
+            <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Header P2 -->
+            <div class="flex justify-between items-center z-10">
+                <div id="p2PowerupBadge" class="text-xs font-bold text-amber-300 bg-amber-950/60 border border-amber-500/40 px-2.5 py-1 rounded-lg hidden animate-pulse">
+                    ⚡ Super Hechizo Disponible!
+                </div>
+                <span class="bg-cyan-500/20 text-cyan-300 text-xs font-bold px-3 py-1 rounded-full border border-cyan-500/30 ml-auto">
+                    <i class="fas fa-keyboard mr-1"></i> Teclas: [J, K, L, Ñ] / [7, 8, 9, +]
+                </span>
+            </div>
+
+            <!-- Health / Energy Bar P2 -->
+            <div class="w-full bg-indigo-950 rounded-full h-3.5 p-0.5 border border-cyan-500/30 my-2 z-10">
+                <div id="p2EnergyBar" class="bg-gradient-to-r from-cyan-500 to-sky-300 h-full rounded-full transition-all duration-300 w-full ml-auto"></div>
+            </div>
+
+            <!-- Wizard Visual & Spell FX Area P2 -->
+            <div class="flex-1 flex flex-col items-center justify-center my-2 relative z-10">
+                <!-- Question Box P2 -->
+                <div class="bg-slate-900/90 border-2 border-cyan-400/60 rounded-2xl p-4 w-full max-w-xs text-center shadow-lg relative">
+                    <span class="text-xs text-cyan-300 uppercase tracking-widest font-bold block mb-1">Resuelve el reto</span>
+                    <div id="p2QuestionText" class="font-title text-3xl sm:text-4xl text-white tracking-wider">
+                        9 - 4 = ?
+                    </div>
+                </div>
+
+                <!-- Wizard Avatar Dynamic Animation -->
+                <div id="p2Sprite" class="text-6xl sm:text-7xl my-3 transition-transform duration-200">
+                    🤖
+                </div>
+            </div>
+
+            <!-- Answer Buttons P2 (Grid 2x2) -->
+            <div id="p2OptionsGrid" class="grid grid-cols-2 gap-2 sm:gap-3 z-10">
+                <!-- Dynamic Answer Buttons injected via JS -->
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER INFO BAR -->
+    <footer class="w-full max-w-5xl px-4 py-1.5 z-20 flex justify-between items-center text-xs text-indigo-300/80 bg-indigo-950/80 border-t border-indigo-800/40 rounded-t-xl">
+        <span><i class="fas fa-wand-magic-sparkles text-amber-400 mr-1"></i> ¡Responde rápido para lanzar hechizos más potentes!</span>
+        <span>Math Wizards 1v1 • Edición Educativa para Niños</span>
+    </footer>
+
+    <!-- MAIN MENU OVERLAY -->
+    <div id="menuOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center z-30 p-4">
+        <div class="max-w-xl w-full bg-gradient-to-b from-indigo-900/90 to-slate-900/95 p-6 sm:p-8 rounded-3xl border-2 border-indigo-500/50 shadow-2xl text-center space-y-6 max-h-[92vh] overflow-y-auto">
+            
+            <!-- Logo Header -->
+            <div>
+                <div class="inline-block text-5xl mb-2 animate-bounce">🧙‍♂️⚡🤖</div>
+                <h1 class="font-title text-3xl sm:text-5xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-amber-300 to-cyan-400">
+                    MATH WIZARDS 1v1
+                </h1>
+                <p class="text-indigo-200 text-sm font-medium mt-1">¡El duelo matemático más divertido para 2 jugadores!</p>
+            </div>
+
+            <!-- Avatar Selection -->
+            <div class="space-y-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block">Elige tus Personajes</label>
+                <div class="grid grid-cols-2 gap-4 bg-indigo-950/60 p-3 rounded-2xl border border-indigo-800/60">
+                    <!-- P1 Avatar Selector -->
+                    <div>
+                        <span class="text-xs text-rose-300 font-bold block mb-1">Jugador 1</span>
+                        <div class="flex justify-center gap-2" id="p1AvatarList">
+                            <button class="avatar-btn p2-avatar text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-rose-500 active" data-player="1" data-avatar="🧙‍♂️">🧙‍♂️</button>
+                            <button class="avatar-btn p2-avatar text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-transparent" data-player="1" data-avatar="🦄">🦄</button>
+                            <button class="avatar-btn p2-avatar text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-transparent" data-player="1" data-avatar="🐲">🐲</button>
+                            <button class="avatar-btn p2-avatar text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-transparent" data-player="1" data-avatar="🦁">🦁</button>
+                        </div>
+                    </div>
+                    <!-- P2 Avatar Selector -->
+                    <div>
+                        <span class="text-xs text-cyan-300 font-bold block mb-1">Jugador 2</span>
+                        <div class="flex justify-center gap-2" id="p2AvatarList">
+                            <button class="avatar-btn text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-cyan-500 active" data-player="2" data-avatar="🤖">🤖</button>
+                            <button class="avatar-btn text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-transparent" data-player="2" data-avatar="👾">👾</button>
+                            <button class="avatar-btn text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-transparent" data-player="2" data-avatar="🐯">🐯</button>
+                            <button class="avatar-btn text-2xl p-2 rounded-xl bg-indigo-900 border-2 border-transparent" data-player="2" data-avatar="🦸‍♀️">🦸‍♀️</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operations Category Selection -->
+            <div class="space-y-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block">Tipo de Operaciones Matemáticas</label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="opCategoryContainer">
+                    <button class="op-btn py-2 px-3 rounded-xl bg-indigo-900/80 border-2 border-amber-400 text-amber-300 font-bold text-xs btn-bounce active" data-op="addsub">
+                        ➕ ➖ Sumas y Restas
+                    </button>
+                    <button class="op-btn py-2 px-3 rounded-xl bg-indigo-900/80 border-2 border-transparent text-indigo-200 font-bold text-xs btn-bounce" data-op="mult">
+                        ✖️ Tablas de Multiplicar
+                    </button>
+                    <button class="op-btn py-2 px-3 rounded-xl bg-indigo-900/80 border-2 border-transparent text-indigo-200 font-bold text-xs btn-bounce" data-op="div">
+                        ➗ Divisiones Fáciles
+                    </button>
+                    <button class="op-btn py-2 px-3 rounded-xl bg-indigo-900/80 border-2 border-transparent text-indigo-200 font-bold text-xs btn-bounce" data-op="compare">
+                        ⚖️ Comparar (&gt;, &lt;, =)
+                    </button>
+                    <button class="op-btn py-2 px-3 rounded-xl bg-indigo-900/80 border-2 border-transparent text-indigo-200 font-bold text-xs btn-bounce col-span-2 sm:col-span-2" data-op="mix">
+                        🌟 Mezcla Mágica (Variado)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Difficulty Grade Selection -->
+            <div class="space-y-2">
+                <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block">Nivel de Dificultad</label>
+                <div class="flex justify-center gap-3" id="diffContainer">
+                    <button class="diff-btn px-4 py-2 rounded-xl bg-indigo-900/80 border-2 border-rose-400 text-rose-300 font-bold text-xs btn-bounce active" data-diff="easy">
+                        🌱 Fácil (1º - 2º Primaria)
+                    </button>
+                    <button class="diff-btn px-4 py-2 rounded-xl bg-indigo-900/80 border-2 border-transparent text-indigo-200 font-bold text-xs btn-bounce" data-diff="medium">
+                        ⭐ Normal (3º - 4º Primaria)
+                    </button>
+                    <button class="diff-btn px-4 py-2 rounded-xl bg-indigo-900/80 border-2 border-transparent text-indigo-200 font-bold text-xs btn-bounce" data-diff="hard">
+                        🔥 Experto (5º - 6º Primaria)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Target Victory Score -->
+            <div class="flex items-center justify-between bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/60 text-xs">
+                <span class="font-bold text-indigo-200">Puntos para ganar la partida:</span>
+                <div class="flex gap-2" id="targetScoreContainer">
+                    <button class="target-btn px-3 py-1 rounded-lg bg-indigo-900 border border-amber-400 text-amber-300 font-bold active" data-target="10">10 Pts</button>
+                    <button class="target-btn px-3 py-1 rounded-lg bg-indigo-900 border border-transparent text-indigo-200 font-bold" data-target="15">15 Pts</button>
+                    <button class="target-btn px-3 py-1 rounded-lg bg-indigo-900 border border-transparent text-indigo-200 font-bold" data-target="20">20 Pts</button>
+                </div>
+            </div>
+
+            <!-- Controls Quick Guide -->
+            <div class="grid grid-cols-2 gap-3 text-left bg-slate-950/60 p-3 rounded-xl text-[11px] border border-indigo-900">
+                <div class="text-rose-300">
+                    <div class="font-bold mb-0.5">🎮 Controles Jugador 1:</div>
+                    <p>Botones de Opción: <b>A, S, D, F</b> (o tocar pantalla)</p>
+                </div>
+                <div class="text-cyan-300">
+                    <div class="font-bold mb-0.5">🎮 Controles Jugador 2:</div>
+                    <p>Botones de Opción: <b>J, K, L, Ñ</b> o <b>7, 8, 9, +</b></p>
+                </div>
+            </div>
+
+            <!-- Start Game Button -->
+            <button id="startGameBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 via-amber-400 to-cyan-400 text-slate-950 font-title text-xl tracking-wider shadow-xl btn-bounce hover:brightness-110">
+                ¡EMPEZAR EL DUELO! 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pauseOverlay" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center z-30">
+        <div class="bg-indigo-900/90 border-2 border-indigo-500 p-8 rounded-3xl text-center space-y-6 max-w-xs w-full shadow-2xl">
+            <h2 class="font-title text-3xl text-amber-300">JUEGO EN PAUSA</h2>
+            <div class="flex flex-col gap-3">
+                <button id="resumeBtn" class="py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-title text-lg shadow-md btn-bounce">
+                    REANUDAR
+                </button>
+                <button id="restartBtn" class="py-3 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-indigo-100 font-bold text-sm border border-indigo-600 btn-bounce">
+                    VOLVER AL MENÚ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINNER CELEBRATION MODAL -->
+    <div id="winnerOverlay" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center z-40 p-4">
+        <div class="bg-gradient-to-b from-indigo-900 to-slate-950 border-2 border-amber-400/80 p-8 rounded-3xl max-w-sm w-full text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div id="winnerIconDisplay" class="text-7xl animate-bounce">🏆</div>
+            <div>
+                <div class="text-xs uppercase tracking-widest text-amber-300 font-bold mb-1">¡TENEMOS UN CAMPEÓN!</div>
+                <h2 id="winnerText" class="font-title text-3xl text-white">JUGADOR 1</h2>
+                <p id="winnerSubtext" class="text-xs text-indigo-200 mt-1">¡Gran maestro de las matemáticas!</p>
+            </div>
+            
+            <div class="bg-indigo-950/80 p-3 rounded-2xl border border-indigo-800 flex justify-around text-center">
+                <div>
+                    <span class="text-[10px] text-rose-300 uppercase font-bold block">Puntuación P1</span>
+                    <span id="finalP1Score" class="font-title text-xl text-rose-400">10</span>
+                </div>
+                <div class="text-indigo-500 font-title text-xl flex items-center">-</div>
+                <div>
+                    <span class="text-[10px] text-cyan-300 uppercase font-bold block">Puntuación P2</span>
+                    <span id="finalP2Score" class="font-title text-xl text-cyan-400">8</span>
+                </div>
+            </div>
+
+            <button id="playAgainBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-400 to-pink-500 text-slate-950 font-title text-lg shadow-lg btn-bounce">
+                ¡JUGAR OTRA VEZ! 🔄
+            </button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT GAME ENGINE -->
+    <script>
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                    }
+                }
+            }
+
+            playCorrect() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                    osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
+
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } catch(e) {}
+            }
+
+            playWrong() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.exponentialRampToValueAtTime(90, now + 0.25);
+
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } catch(e) {}
+            }
+
+            playSpell() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.2);
+
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } catch(e) {}
+            }
+
+            playWin() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99];
+                    notes.forEach((freq, i) => {
+                        const now = this.ctx.currentTime + i * 0.1;
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.15, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.3);
+                    });
+                } catch(e) {}
+            }
+        }
+
+        const sound = new SoundEffects();
+
+        const canvas = document.getElementById('fxCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 8 + 4;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8 - 2;
+                this.life = 1;
+                this.decay = Math.random() * 0.03 + 0.015;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.15; // Gravity
+                this.life -= this.decay;
+            }
+
+            draw() {
+                if (this.life <= 0) return;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function spawnBurst(x, y, color, count = 25) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function renderParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(renderParticles);
+        }
+        renderParticles();
+
+        let gameConfig = {
+            opCategory: 'addsub', // 'addsub', 'mult', 'div', 'compare', 'mix'
+            difficulty: 'easy',   // 'easy', 'medium', 'hard'
+            targetScore: 10,
+            p1Avatar: '🧙‍♂️',
+            p2Avatar: '🤖'
+        };
+
+        let gameState = {
+            running: false,
+            paused: false,
+            p1: {
+                score: 0,
+                combo: 0,
+                energy: 100,
+                frozen: false,
+                currentQ: null
+            },
+            p2: {
+                score: 0,
+                combo: 0,
+                energy: 100,
+                frozen: false,
+                currentQ: null
+            }
+        };
+
+        // Key Mappings
+        const P1_KEYS = ['KeyA', 'KeyS', 'KeyD', 'KeyF'];
+        const P2_KEYS_PRIMARY = ['KeyJ', 'KeyK', 'KeyL', 'Semicolon']; // Semicolon = Ñ / ;
+        const P2_KEYS_NUMPAD = ['Numpad7', 'Numpad8', 'Numpad9', 'NumpadAdd'];
+
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function generateQuestion(playerNum) {
+            let cat = gameConfig.opCategory;
+            if (cat === 'mix') {
+                const cats = ['addsub', 'mult', 'compare'];
+                cat = cats[Math.floor(Math.random() * cats.length)];
+            }
+
+            let questionText = '';
+            let correctAnswer = '';
+            let distractors = [];
+
+            if (cat === 'compare') {
+                // Comparison questions
+                let maxVal = gameConfig.difficulty === 'easy' ? 20 : (gameConfig.difficulty === 'medium' ? 50 : 100);
+                let numA = getRandomInt(1, maxVal);
+                let numB = getRandomInt(1, maxVal);
+
+                questionText = `${numA}  ❓  ${numB}`;
+                if (numA > numB) correctAnswer = '>';
+                else if (numA < numB) correctAnswer = '<';
+                else correctAnswer = '=';
+
+                distractors = ['>', '<', '='].filter(op => op !== correctAnswer);
+                // Shuffle options
+                let options = [correctAnswer, ...distractors];
+                options = options.sort(() => Math.random() - 0.5);
+
+                return { questionText, correctAnswer, options };
+            }
+
+            if (cat === 'mult') {
+                let maxFactor = gameConfig.difficulty === 'easy' ? 5 : (gameConfig.difficulty === 'medium' ? 10 : 12);
+                let a = getRandomInt(1, maxFactor);
+                let b = getRandomInt(1, 10);
+                questionText = `${a} × ${b} = ?`;
+                correctAnswer = (a * b).toString();
+            } else if (cat === 'div') {
+                let maxDiv = gameConfig.difficulty === 'easy' ? 5 : (gameConfig.difficulty === 'medium' ? 10 : 12);
+                let divisor = getRandomInt(1, maxDiv);
+                let quotient = getRandomInt(1, 10);
+                let dividend = divisor * quotient;
+                questionText = `${dividend} ÷ ${divisor} = ?`;
+                correctAnswer = quotient.toString();
+            } else { // 'addsub'
+                let isAdd = Math.random() < 0.5;
+                let maxVal = gameConfig.difficulty === 'easy' ? 15 : (gameConfig.difficulty === 'medium' ? 50 : 100);
+                
+                if (isAdd) {
+                    let a = getRandomInt(1, maxVal);
+                    let b = getRandomInt(1, maxVal);
+                    questionText = `${a} + ${b} = ?`;
+                    correctAnswer = (a + b).toString();
+                } else {
+                    let a = getRandomInt(2, maxVal);
+                    let b = getRandomInt(1, a);
+                    questionText = `${a} - ${b} = ?`;
+                    correctAnswer = (a - b).toString();
+                }
+            }
+
+            // Generate Numeric Distractors
+            let correctNum = parseInt(correctAnswer);
+            let optionsSet = new Set([correctAnswer]);
+
+            while (optionsSet.size < 4) {
+                let offset = getRandomInt(-5, 5);
+                if (offset === 0) offset = 1;
+                let fakeAns = Math.max(0, correctNum + offset);
+                optionsSet.add(fakeAns.toString());
+            }
+
+            let options = Array.from(optionsSet).sort(() => Math.random() - 0.5);
+            return { questionText, correctAnswer, options };
+        }
+
+        function renderOptionsGrid(playerNum, questionData) {
+            const container = document.getElementById(`p${playerNum}OptionsGrid`);
+            container.innerHTML = '';
+
+            const keyLabelsP1 = ['A', 'S', 'D', 'F'];
+            const keyLabelsP2 = ['J', 'K', 'L', 'Ñ'];
+
+            questionData.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                const pColor = playerNum === 1 ? 'rose' : 'cyan';
+                const keyHint = playerNum === 1 ? keyLabelsP1[idx] : keyLabelsP2[idx];
+
+                btn.className = `p${playerNum}-opt-btn py-3 px-2 rounded-2xl bg-indigo-900/90 border-2 border-${pColor}-400/50 hover:border-${pColor}-300 text-white font-title text-xl sm:text-2xl flex items-center justify-between shadow-md btn-bounce transition-all relative overflow-hidden`;
+                
+                btn.innerHTML = `
+                    <span class="text-xs bg-indigo-950/80 text-${pColor}-300 border border-${pColor}-500/40 px-2 py-0.5 rounded-md font-sans font-bold">${keyHint}</span>
+                    <span class="flex-1 text-center font-num">${opt}</span>
+                `;
+
+                btn.addEventListener('click', () => handleAnswer(playerNum, opt, btn));
+                container.appendChild(btn);
+            });
+        }
+
+        function loadNextQuestion(playerNum) {
+            const qData = generateQuestion(playerNum);
+            gameState[`p${playerNum}`].currentQ = qData;
+            document.getElementById(`p${playerNum}QuestionText`).textContent = qData.questionText;
+            renderOptionsGrid(playerNum, qData);
+        }
+
+        function handleAnswer(playerNum, chosenAnswer, btnElement) {
+            if (!gameState.running || gameState.paused) return;
+            const pKey = `p${playerNum}`;
+            const playerData = gameState[pKey];
+
+            if (playerData.frozen) return;
+
+            const qData = playerData.currentQ;
+            const isCorrect = chosenAnswer === qData.correctAnswer;
+
+            // Coordinates for particle explosion
+            const rect = btnElement ? btnElement.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2 };
+            const burstX = rect.left + rect.width / 2;
+            const burstY = rect.top + rect.height / 2;
+
+            if (isCorrect) {
+                sound.playCorrect();
+                playerData.combo++;
+                let addedPoints = playerData.combo >= 3 ? 2 : 1;
+                playerData.score += addedPoints;
+
+                spawnBurst(burstX, burstY, playerNum === 1 ? '#f43f5e' : '#06b6d4', 20);
+
+                // Sprite bounce animation
+                const sprite = document.getElementById(`p${playerNum}Sprite`);
+                sprite.classList.add('scale-125');
+                setTimeout(() => sprite.classList.remove('scale-125'), 200);
+
+                // Visual combo indicator
+                const comboBadge = document.getElementById(`p${playerNum}Combo`);
+                if (playerData.combo >= 2) {
+                    comboBadge.textContent = `🔥 x${playerData.combo}`;
+                    comboBadge.classList.remove('hidden');
+                }
+
+                updateScores();
+
+                // Check Win Condition
+                if (playerData.score >= gameConfig.targetScore) {
+                    endGame(playerNum);
+                    return;
+                }
+
+                loadNextQuestion(playerNum);
+
+            } else {
+                sound.playWrong();
+                playerData.combo = 0;
+                document.getElementById(`p${playerNum}Combo`).classList.add('hidden');
+
+                // Shake side
+                const sideElem = document.getElementById(`p${playerNum}Side`);
+                sideElem.classList.add('animate-shake');
+                setTimeout(() => sideElem.classList.remove('animate-shake'), 350);
+
+                // Penalty: brief freeze
+                playerData.frozen = true;
+                btnElement.classList.add('bg-red-600', 'border-red-400');
+                setTimeout(() => {
+                    playerData.frozen = false;
+                    loadNextQuestion(playerNum);
+                }, 600);
+            }
+        }
+
+        function updateScores() {
+            document.getElementById('p1Score').textContent = gameState.p1.score;
+            document.getElementById('p2Score').textContent = gameState.p2.score;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!gameState.running || gameState.paused) return;
+
+            // Player 1 Keys (A, S, D, F)
+            const p1Idx = P1_KEYS.indexOf(e.code);
+            if (p1Idx !== -1) {
+                const btns = document.querySelectorAll('#p1OptionsGrid button');
+                if (btns[p1Idx]) btns[p1Idx].click();
+            }
+
+            // Player 2 Keys (J, K, L, Ñ)
+            let p2Idx = P2_KEYS_PRIMARY.indexOf(e.code);
+            if (p2Idx === -1) p2Idx = P2_KEYS_NUMPAD.indexOf(e.code);
+
+            if (p2Idx !== -1) {
+                const btns = document.querySelectorAll('#p2OptionsGrid button');
+                if (btns[p2Idx]) btns[p2Idx].click();
+            }
+        });
+
+        function startGame() {
+            sound.init();
+
+            gameState.p1.score = 0;
+            gameState.p1.combo = 0;
+            gameState.p1.frozen = false;
+
+            gameState.p2.score = 0;
+            gameState.p2.combo = 0;
+            gameState.p2.frozen = false;
+
+            updateScores();
+
+            document.getElementById('p1Combo').classList.add('hidden');
+            document.getElementById('p2Combo').classList.add('hidden');
+
+            document.getElementById('p1AvatarDisplay').textContent = gameConfig.p1Avatar;
+            document.getElementById('p2AvatarDisplay').textContent = gameConfig.p2Avatar;
+            document.getElementById('p1Sprite').textContent = gameConfig.p1Avatar;
+            document.getElementById('p2Sprite').textContent = gameConfig.p2Avatar;
+
+            document.getElementById('targetScoreDisplay').textContent = `${gameConfig.targetScore} Pts`;
+
+            // Mode Badge
+            const catLabels = {
+                addsub: 'Sumas y Restas',
+                mult: 'Tablas de Multiplicar',
+                div: 'Divisiones',
+                compare: 'Comparar (<, >, =)',
+                mix: 'Mezcla Mágica'
+            };
+            document.getElementById('gameModeBadge').textContent = `${catLabels[gameConfig.opCategory]} • ${gameConfig.difficulty.toUpperCase()}`;
+
+            loadNextQuestion(1);
+            loadNextQuestion(2);
+
+            document.getElementById('menuOverlay').classList.add('hidden');
+            document.getElementById('winnerOverlay').classList.add('hidden');
+            document.getElementById('pauseOverlay').classList.add('hidden');
+
+            gameState.running = true;
+            gameState.paused = false;
+        }
+
+        function endGame(winnerNum) {
+            gameState.running = false;
+            sound.playWin();
+
+            const winnerAvatar = winnerNum === 1 ? gameConfig.p1Avatar : gameConfig.p2Avatar;
+            document.getElementById('winnerIconDisplay').textContent = winnerAvatar;
+            document.getElementById('winnerText').textContent = `JUGADOR ${winnerNum} GANA!`;
+            document.getElementById('winnerText').className = `font-title text-3xl ${winnerNum === 1 ? 'text-rose-400' : 'text-cyan-400'}`;
+            
+            document.getElementById('finalP1Score').textContent = gameState.p1.score;
+            document.getElementById('finalP2Score').textContent = gameState.p2.score;
+
+            spawnBurst(window.innerWidth / 2, window.innerHeight / 2, winnerNum === 1 ? '#f43f5e' : '#06b6d4', 60);
+
+            document.getElementById('winnerOverlay').classList.remove('hidden');
+        }
+
+        // Avatar Selectors
+        document.querySelectorAll('#p1AvatarList .avatar-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#p1AvatarList .avatar-btn').forEach(b => {
+                    b.classList.remove('border-rose-500', 'active');
+                    b.classList.add('border-transparent');
+                });
+                btn.classList.remove('border-transparent');
+                btn.classList.add('border-rose-500', 'active');
+                gameConfig.p1Avatar = btn.dataset.avatar;
+            });
+        });
+
+        document.querySelectorAll('#p2AvatarList .avatar-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#p2AvatarList .avatar-btn').forEach(b => {
+                    b.classList.remove('border-cyan-500', 'active');
+                    b.classList.add('border-transparent');
+                });
+                btn.classList.remove('border-transparent');
+                btn.classList.add('border-cyan-500', 'active');
+                gameConfig.p2Avatar = btn.dataset.avatar;
+            });
+        });
+
+        // Category Buttons
+        document.querySelectorAll('.op-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.op-btn').forEach(b => {
+                    b.classList.remove('border-amber-400', 'text-amber-300', 'active');
+                    b.classList.add('border-transparent', 'text-indigo-200');
+                });
+                btn.classList.remove('border-transparent', 'text-indigo-200');
+                btn.classList.add('border-amber-400', 'text-amber-300', 'active');
+                gameConfig.opCategory = btn.dataset.op;
+            });
+        });
+
+        // Difficulty Buttons
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => {
+                    b.classList.remove('border-rose-400', 'text-rose-300', 'active');
+                    b.classList.add('border-transparent', 'text-indigo-200');
+                });
+                btn.classList.remove('border-transparent', 'text-indigo-200');
+                btn.classList.add('border-rose-400', 'text-rose-300', 'active');
+                gameConfig.difficulty = btn.dataset.diff;
+            });
+        });
+
+        // Target Score Buttons
+        document.querySelectorAll('.target-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.target-btn').forEach(b => {
+                    b.classList.remove('border-amber-400', 'text-amber-300', 'active');
+                    b.classList.add('border-transparent', 'text-indigo-200');
+                });
+                btn.classList.remove('border-transparent', 'text-indigo-200');
+                btn.classList.add('border-amber-400', 'text-amber-300', 'active');
+                gameConfig.targetScore = parseInt(btn.dataset.target);
+            });
+        });
+
+        // Start / Pause / Restart Buttons
+        document.getElementById('startGameBtn').addEventListener('click', startGame);
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            document.getElementById('winnerOverlay').classList.add('hidden');
+            document.getElementById('menuOverlay').classList.remove('hidden');
+        });
+
+        const pauseBtn = document.getElementById('pauseBtn');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+
+        function togglePause() {
+            if (!gameState.running) return;
+            gameState.paused = !gameState.paused;
+            if (gameState.paused) {
+                pauseOverlay.classList.remove('hidden');
+            } else {
+                pauseOverlay.classList.add('hidden');
+            }
+        }
+
+        pauseBtn.addEventListener('click', togglePause);
+        document.getElementById('resumeBtn').addEventListener('click', togglePause);
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            pauseOverlay.classList.add('hidden');
+            document.getElementById('menuOverlay').classList.remove('hidden');
+            gameState.running = false;
+        });
+
+        // Sound Toggle
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        const soundIcon = document.getElementById('soundIcon');
+        soundToggleBtn.addEventListener('click', () => {
+            sound.muted = !sound.muted;
+            if (sound.muted) {
+                soundIcon.className = 'fas fa-volume-xmark text-rose-400';
+            } else {
+                soundIcon.className = 'fas fa-volume-high text-amber-300';
+            }
+        });
+    </script>
+</body>
+</html>
